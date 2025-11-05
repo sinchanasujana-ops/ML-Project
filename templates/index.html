@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crop Yield Prediction</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body style="
+  background-image: url('https://cff2.earth.com/uploads/2019/05/03130748/Massive-global-crop-yield-variations-explained-by-climate-extremes.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+">
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="#">🌾 CropYield Predictor</a>
+        <div class="d-flex">
+            <a class="btn btn-outline-light" href="{{ url_for('logout') }}">Logout</a>
+        </div>
+    </div>
+</nav>
+
+<div class="container py-4 mt-4">
+    <h2 class="text-center mb-4">Dashboard</h2>
+
+    <form id="predictForm" method="POST" action="/predict" class="card p-4 shadow-sm">
+        
+        <div class="row mb-3">
+            <div class="col">
+                <label><b>Year</b></label>
+                <input type="number" class="form-control" name="Year" min="1990" max="2025"
+                        value="{{ request.form.get('Year', '') }}">
+            </div>
+            <div class="col">
+                <label><b>Average Rainfall (mm/year)</b></label>
+                <input type="number" class="form-control" id="rainfall" name="average_rain_fall_mm_per_year" step="any"
+                        value="{{ request.form.get('average_rain_fall_mm_per_year', '') }}">
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col">
+                <label><b>Pesticides (tonnes)</b></label>
+                <input type="number" class="form-control" name="pesticides_tonnes" step="any"
+                        value="{{ request.form.get('pesticides_tonnes', '') }}">
+            </div>
+            <div class="col">
+                <label><b>Average Temperature (°C)</b></label>
+                <input type="number" class="form-control" id="avg_temp" name="avg_temp" step="any"
+                        value="{{ request.form.get('avg_temp', '') }}">
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col">
+                <label><b>Area</b></label>
+                <select class="form-control" id="areaSelect" name="Area" required>
+                    <option value="">-- Select Area --</option>
+                    {% for area in areas %}
+                    <option value="{{ area }}" {% if request.form.get('Area') == area or selected_area == area %}selected{% endif %}>{{ area }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col">
+                <label><b>Crop (Select Multiple)</b></label>
+                <select class="form-control" name="Item" multiple required>
+                    {% for crop in crops %}
+                    <option value="{{ crop }}"
+                        {% if (request.form.getlist('Item') and crop in request.form.getlist('Item')) or (selected_crops and crop in selected_crops) %}
+                            selected
+                        {% endif %}>{{ crop }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-success btn-lg w-100">🚜 Predict Yield</button>
+    </form>
+    <div id="loading" class="text-center mt-3" style="display:none;">
+        <div class="spinner-border text-success" role="status"></div>
+        <p class="mt-2">Fetching live weather data...</p>
+    </div>
+
+    {% if multi_predictions %}
+    <div class="card mt-4 p-4 shadow-sm">
+        <h4 class="mb-3">🌱 Predicted Yields</h4>
+        <ul>
+            {% for crop, val in multi_predictions.items() %}
+            <li><b>{{ crop }}</b>: {{ val }} hg/ha</li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    {% if yield_trend %}
+    <div class="card mt-4 p-4 shadow-sm">
+        <h4>📈 Yield Trend for {{ selected_crops[0] }}</h4>
+        <canvas id="yieldChart"></canvas>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    {% if error_message %}
+    <div class="alert alert-danger mt-4">{{ error_message }}</div>
+    {% endif %}
+</div>
+
+<script>
+document.getElementById('areaSelect').addEventListener('change', async function() {
+    const area = this.value;
+    if (!area) return;
+
+    const loading = document.getElementById('loading');
+    loading.style.display = 'block'; // Show spinner
+
+    try {
+        const resp = await fetch(`/get_weather/${area}`);
+        const data = await resp.json();
+
+        document.getElementById('avg_temp').value = data.avg_temp || 25;
+        document.getElementById('rainfall').value = data.average_rain_fall_mm_per_year || 1200;
+
+    } catch (e) {
+        alert("⚠️ Failed to load weather data. Using defaults.");
+        document.getElementById('avg_temp').value = 25;
+        document.getElementById('rainfall').value = 1200;
+    } finally {
+        loading.style.display = 'none'; // Hide spinner
+    }
+});
+</script>
+
+{% if yield_trend %}
+<script>
+const trendData = {{ yield_trend | tojson }};
+const years = Object.keys(trendData);
+const yields = Object.values(trendData);
+
+const ctx = document.getElementById('yieldChart').getContext('2d');
+new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: years,
+        datasets: [{
+            label: '{{ selected_crops[0] }} Yield (hg/ha)',
+            data: yields,
+            borderColor: 'rgba(75, 192, 192, 1)',
+            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+            borderWidth: 2,
+            tension: 0.3,
+            fill: true,
+            pointRadius: 4,
+            pointHoverRadius: 6
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: { display: true },
+            title: { display: true, text: 'Crop Yield Trend Over Years' }
+        },
+        scales: {
+            x: { title: { display: true, text: 'Year' } },
+            y: { title: { display: true, text: 'Yield (hg/ha)' } }
+        }
+    }
+});
+</script>
+{% endif %}
+
+</body>
+</html>

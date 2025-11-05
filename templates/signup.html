@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      background-image: url('https://images.unsplash.com/photo-1499346030926-9a72daac6c63?auto=format&fit=crop&w=1920&q=80');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      background-attachment: fixed;
+      min-height: 100vh;
+      font-family: 'Poppins', sans-serif;
+    }
+
+    .login-card {
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      transition: transform 0.3s ease;
+    }
+
+    .login-card:hover {
+      transform: scale(1.02);
+    }
+
+    h3 {
+      color: #fff;
+      font-weight: 600;
+    }
+
+    label {
+      color: #fff;
+      font-weight: 500;
+    }
+
+    .form-control {
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 10px;
+      border: none;
+    }
+
+    .btn-success {
+      background: linear-gradient(45deg, #2ecc71, #27ae60);
+      border: none;
+      border-radius: 10px;
+      font-weight: 600;
+      transition: 0.3s;
+    }
+
+    .btn-success:hover {
+      background: linear-gradient(45deg, #27ae60, #219150);
+    }
+
+    p, a {
+      color: #fff;
+    }
+
+    a:hover {
+      text-decoration: underline;
+      color: #a0f3b0;
+    }
+  </style>
+</head>
+
+<body class="d-flex align-items-center justify-content-center">
+
+  <div class="card login-card p-4 shadow-lg" style="width: 100%; max-width: 400px;">
+    <h3 class="text-center mb-4">🔐 Login to CropYield Predictor</h3>
+
+    {% if error %}
+    <div class="alert alert-danger" role="alert">
+      {{ error }}
+    </div>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('login') }}">
+      <div class="mb-3">
+        <label for="username" class="form-label">Username</label>
+        <input type="text" class="form-control" id="username" name="username" required>
+      </div>
+      <div class="mb-3">
+        <label for="password" class="form-label">Password</label>
+        <input type="password" class="form-control" id="password" name="password" required>
+      </div>
+      <button type="submit" class="btn btn-success w-100 mb-3">Login</button>
+    </form>
+
+    <p class="text-center">Don't have an account? <a href="{{ url_for('signup') }}">Sign Up</a></p>
+  </div>
+
+</body>
+</html>
